@@ -15,6 +15,48 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Post represents the item inside of the database that represents a reddit post
+type Post struct {
+	id          int64
+	Title       string
+	Upvotes     int64
+	UpvoteRatio float64
+	URL         string
+	Permalink   string
+	Date        time.Time
+	Sub         string
+}
+
+func getDBInstance() *sql.DB {
+	const (
+		host   = "localhost"
+		port   = 5432
+		user   = "nick"
+		dbname = "LocalDB"
+	)
+
+	dbInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
+		host, port, user, dbname)
+
+	fmt.Println(dbInfo)
+
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		panic(err)
+	}
+	// defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Successfully connected to: %s\n", dbname)
+	fmt.Println("---------------------")
+
+	return db
+}
+
 // requestToken gets the authorization token from reddit
 func requestToken(user, pass, agent, public, private string) string {
 	client := &http.Client{}
@@ -144,35 +186,22 @@ func getSubTop(sub, agent, token, period, limit string) {
 		fmt.Printf("%+v\n", v.Data.Permalink)
 		fmt.Printf("%+v\n", v.Data.URL)
 		fmt.Printf("%+v\n", time.Unix(int64(v.Data.UtcEpoch), 0))
+		item := Post{
+			Title:       v.Data.Title,
+			Upvotes:     v.Data.Upvotes,
+			UpvoteRatio: v.Data.UpvoteRatio,
+			Permalink:   v.Data.Permalink,
+			URL:         v.Data.URL,
+			Date:        time.Unix(int64(v.Data.UtcEpoch), 0),
+			Sub:         v.Data.Sub,
+		}
+		addPost(item)
 	}
 }
 
 func getSubsDB() []string {
-	const (
-		host   = "localhost"
-		port   = 5432
-		user   = "nick"
-		dbname = "LocalDB"
-	)
-
-	dbInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
-		host, port, user, dbname)
-
-	fmt.Println(dbInfo)
-
-	db, err := sql.Open("postgres", dbInfo)
-	if err != nil {
-		panic(err)
-	}
+	db := getDBInstance()
 	defer db.Close()
-
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Successfully connected to: %s\n", dbname)
-	fmt.Println("---------------------")
 
 	sqlStatement := `SELECT name FROM "Subreddits";`
 	rows, err := db.Query(sqlStatement)
@@ -199,8 +228,34 @@ func getSubsDB() []string {
 	return subs
 }
 
+// Maybe change to take in database instance and pass from other function so only opened and closed once
+func addPost(item Post) bool {
+	db := getDBInstance()
+	defer db.Close()
+
+	sqlStatement := `INSERT INTO "Reddit_Posts" 
+					("Title", "Upvotes", "UpvoteRatio", "URL", "Permalink", "Date", "Sub_id")
+					VALUES
+					($1, $2, $3, $4, $5, $6, (SELECT id FROM "Subreddits" WHERE "name"=$7))`
+	_, err := db.Exec(sqlStatement,
+		item.Title,
+		item.Upvotes,
+		item.UpvoteRatio,
+		item.URL,
+		item.Permalink,
+		item.Date,
+		item.Sub)
+
+	if err != nil {
+		fmt.Printf("Error adding post: %+v", err.Error())
+		return false
+	}
+
+	return true
+}
+
 func main() {
-	exec := flag.Bool("red", true, "a bool that represents whether or not to use reddit api")
+	exec := flag.Bool("red", false, "a bool that represents whether or not to use reddit api")
 	flag.Parse()
 
 	user := os.Getenv("USER")
