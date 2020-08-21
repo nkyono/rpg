@@ -38,8 +38,6 @@ func getDBInstance() *sql.DB {
 	dbInfo := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable",
 		host, port, user, dbname)
 
-	fmt.Println(dbInfo)
-
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
 		panic(err)
@@ -50,9 +48,6 @@ func getDBInstance() *sql.DB {
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("Successfully connected to: %s\n", dbname)
-	fmt.Println("---------------------")
 
 	return db
 }
@@ -100,13 +95,11 @@ func requestToken(user, pass, agent, public, private string) string {
 	_ = json.Unmarshal(body, &res)
 	token := res.AccessToken + " " + res.TokenType
 
-	fmt.Printf("Response Header: %+v\n", resp.Header)
-	fmt.Printf("%s\n", token)
 	return token
 }
 
 func getSubTop(sub, agent, token, period, limit string) {
-	fmt.Printf("Getting %s's top posts of this month\n", sub)
+	// fmt.Printf("Getting %s's top posts of this month\n", sub)
 	URL := fmt.Sprintf("https://www.reddit.com/r/%s/top/.json", sub)
 
 	client := &http.Client{}
@@ -124,9 +117,6 @@ func getSubTop(sub, agent, token, period, limit string) {
 	query.Add("t", period)
 	query.Add("limit", limit)
 	req.URL.RawQuery = query.Encode()
-
-	fmt.Println("---------------------")
-	fmt.Printf("URL: %s\n\n", req.URL.String())
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -179,13 +169,15 @@ func getSubTop(sub, agent, token, period, limit string) {
 	_ = json.Unmarshal(body, &topRes)
 
 	for _, v := range topRes.Data.Children {
-		fmt.Println("---------------------")
-		fmt.Printf("%+v\n", v.Data.Title)
-		fmt.Printf("%+v\n", v.Data.Upvotes)
-		fmt.Printf("%+v\n", v.Data.UpvoteRatio)
-		fmt.Printf("%+v\n", v.Data.Permalink)
-		fmt.Printf("%+v\n", v.Data.URL)
-		fmt.Printf("%+v\n", time.Unix(int64(v.Data.UtcEpoch), 0))
+		/*
+			fmt.Println("---------------------")
+			fmt.Printf("%+v\n", v.Data.Title)
+			fmt.Printf("%+v\n", v.Data.Upvotes)
+			fmt.Printf("%+v\n", v.Data.UpvoteRatio)
+			fmt.Printf("%+v\n", v.Data.Permalink)
+			fmt.Printf("%+v\n", v.Data.URL)
+			fmt.Printf("%+v\n", time.Unix(int64(v.Data.UtcEpoch), 0))
+		*/
 		item := Post{
 			Title:       v.Data.Title,
 			Upvotes:     v.Data.Upvotes,
@@ -263,8 +255,8 @@ func main() {
 	agent := os.Getenv("AGENT")
 	public := os.Getenv("PUBLIC")
 	private := os.Getenv("PRIVATE")
-	period := "month"
-	limit := "1"
+	period := "year"
+	limit := "200"
 
 	fmt.Println("---------------------")
 	fmt.Printf("User: %s\n", user)
@@ -280,9 +272,7 @@ func main() {
 	if *exec {
 		token := requestToken(user, pass, agent, public, private)
 		for _, v := range subs {
-			fmt.Println("---------------------")
 			getSubTop(v, agent, token, period, limit)
-			fmt.Println("---------------------")
 		}
 	}
 }
