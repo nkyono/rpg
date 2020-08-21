@@ -200,7 +200,7 @@ func getSubsDB() []string {
 }
 
 func main() {
-	exec := flag.Bool("red", false, "a bool that represents whether or not to use reddit api")
+	exec := flag.Bool("red", true, "a bool that represents whether or not to use reddit api")
 	flag.Parse()
 
 	user := os.Getenv("USER")
