@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
@@ -246,12 +247,28 @@ func addPost(item Post) bool {
 	return true
 }
 
+func deleteAllPosts() bool {
+	db := getDBInstance()
+	defer db.Close()
+
+	sqlStatement := `TRUNCATE "Reddit_Posts"`
+	_, err := db.Exec(sqlStatement)
+
+	if err != nil {
+		fmt.Printf("Error emptying table: %+v", err.Error())
+		return false
+	}
+
+	return true
+}
+
 func main() {
+	godotenv.Load()
 	exec := flag.Bool("red", false, "a bool that represents whether or not to use reddit api")
 	flag.Parse()
 
-	user := os.Getenv("USER")
-	pass := os.Getenv("PASS")
+	user := os.Getenv("USERNAME")
+	pass := os.Getenv("PASSWORD")
 	agent := os.Getenv("AGENT")
 	public := os.Getenv("PUBLIC")
 	private := os.Getenv("PRIVATE")
@@ -268,7 +285,7 @@ func main() {
 
 	subs := getSubsDB()
 	fmt.Printf("%+v\n", subs)
-
+	// deleteAllPosts()
 	if *exec {
 		token := requestToken(user, pass, agent, public, private)
 		for _, v := range subs {
