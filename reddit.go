@@ -263,7 +263,11 @@ func deleteAllPosts() bool {
 }
 
 func main() {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Printf("Error loading .env file: %+v", err.Error())
+		os.Exit(1)
+	}
 	exec := flag.Bool("red", false, "a bool that represents whether or not to use reddit api")
 	flag.Parse()
 
